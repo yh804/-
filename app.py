@@ -6,10 +6,10 @@ import io
 from scipy.stats import chi2_contingency
 import platform
 
-# ===== 替换原有的字体设置 =====
 # 支持本地（Windows）和云端（Linux）的中文显示
-if platform.system() == "Linux":
-    plt.rcParams['figure.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans', 'sans-serif']
+# ===== 字体设置（兼容本地和云端） =====
+if platform.system() == 'Linux':
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans', 'sans-serif']
 else:
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'sans-serif']
 plt.rcParams['axes.unicode_minus'] = False
