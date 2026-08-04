@@ -130,14 +130,14 @@ if uploaded_file is not None:
             else:
                 st.info(f"ℹ️ 结论：{group_a_name}组 与 {group_b_name}组 差异 **不显著**")
 
-        st.subheader("📉 两组时长分布对比")
-
+        st.subheader("📉 Distribution Comparison between Groups")
+        
         fig, ax = plt.subplots(figsize=(10, 6))
-        ax.hist(val_a, bins=20, alpha=0.5, label=f'{group_a_name}组')
-        ax.hist(val_b, bins=20, alpha=0.5, label=f'{group_b_name}组')
-        ax.set_xlabel('A/B组数量', fontsize=14)
-        ax.set_ylabel(value_col, fontsize=14)
-        ax.set_title(f"两组在「{value_col}」数值上的分布对比", fontsize=18)
+        ax.hist(val_a, bins=20, alpha=0.5, label=f'{group_a_name} (Group A)')
+        ax.hist(val_b, bins=20, alpha=0.5, label=f'{group_b_name} (Group B)')
+        ax.set_xlabel('Value', fontsize=14)
+        ax.set_ylabel('Frequency', fontsize=14)
+        ax.set_title('Distribution Comparison', fontsize=18)
         ax.legend()
         st.pyplot(fig)
 
