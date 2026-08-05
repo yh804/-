@@ -8,11 +8,8 @@ import platform
 
 # 支持本地（Windows）和云端（Linux）的中文显示
 # ===== 字体设置（兼容本地和云端） =====
-if platform.system() == "Linux":
-    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans', 'sans-serif']
-else:
-    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'sans-serif']
-plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+plt.rcParams['axes.unicode_minus'] = False   # 解决负号显示异常
 
 st.set_page_config(page_title='AB测试报告', layout='wide')
 st.title('🚀 自动化AB测试报告生成器')
