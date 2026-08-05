@@ -4,3 +4,4 @@ scipy
 matplotlib
 numpy
 pandas
+fonts-wqy-zenhei
