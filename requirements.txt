@@ -4,8 +4,4 @@ scipy
 matplotlib
 numpy
 pandas
-chi2_contingency
-ttest_ind
-TTestIndPower
-NormalIndPower
-proportion_effectsize
+statsmodels
