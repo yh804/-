@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import io
 from scipy.stats import chi2_contingency,ttest_ind
-from statsmodels.stats.power import TTestIndPower, NormalIndPower
+from statsmodels.stats.power import TTestIndPower
+from statsmodels.stats.power import NormalIndPower
 from statsmodels.stats.proportion import proportion_effectsize
 import platform
 
