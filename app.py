@@ -317,7 +317,7 @@ if uploaded_file is not None:
                 title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
                 doc.add_paragraph(f'报告生成时间:{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}')
-                doc.add_paragraph(f'数据文件:{uploaded_file.name if uploaded_file else '未命名'}')
+                doc.add_paragraph(f'数据文件:{uploaded_file.name if uploaded_file else "未命名"}')
                 doc.add_paragraph(f"")
 
                 doc.add_heading('一、实验概述', level=2)
