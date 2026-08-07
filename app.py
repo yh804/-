@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import io
 from scipy.stats import chi2_contingency,ttest_ind
-from statsmodels.stats.power import TTestIndPower
-from statsmodels.stats.power import NormalIndPower
+from statsmodels.stats.power import TTestIndPower, NormalIndPower
 from statsmodels.stats.proportion import proportion_effectsize
 import platform
 
@@ -50,7 +49,6 @@ if uploaded_file is not None:
             (pl.col(conv_col).mean() * 100).alias('转化率%'),
             pl.col(value_col).mean().alias('平均值')
         ])
-
         unique_groups = df[group_col].unique().to_list()
         if len(unique_groups) != 2:
             st.error(f"❌ 分组列 '{group_col}' 包含 {len(unique_groups)} 个不同值，需要恰好两组。")
@@ -286,6 +284,113 @@ if uploaded_file is not None:
                             st.info(f"📌 当前每组有 {current_n} 个样本，已满足最低要求。")
             else:
                 st.error("请确保基准转化率和提升幅度均大于 0。")
+
+        with st.expander("📄 导出分析报告（Word 文档）"):
+            st.markdown("点击下方按钮，将当前分析结果导出为一份结构化的 Word 报告。")
+
+            # 导入python-docx库的Document类：Word文档操作核心入口，用于创建/打开docx文档，添加标题、段落、图片、表格等所有内容都基于它
+            from docx import Document
+
+            # 导入python-docx的shared共享工具模块：提供排版常用的单位转换类
+            # Inches：英寸单位，用于设置图片尺寸、页边距、表格列宽等长度类参数
+            # Pt：磅值单位，用于设置字体大小、行间距、段间距等文字排版参数
+            from docx.shared import Inches, Pt
+
+            # 导入python-docx的文本枚举模块：WD_ALIGN_PARAGRAPH是段落对齐方式常量集合
+            # 包含CENTER(居中)、LEFT(左对齐)、RIGHT(右对齐)、JUSTIFY(两端对齐)等，设置段落对齐时直接调用，代码更清晰
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+            # 导入Python标准库io模块的BytesIO：内存二进制缓冲区，相当于"虚拟文件"
+            # 作用：生成的Word/Excel等文件直接存在内存中，无需先保存到本地硬盘，常用于网页下载、批量打包、接口传输等场景
+            from io import BytesIO
+            from datetime import datetime
+            
+            def fig_to_bytes(fig):
+                buf = BytesIO()
+                fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+                buf.seek(0)     #指针
+                return buf
+
+            if st.button("📥 生成下载 Word 报告按钮"):
+                doc = Document()
+                title = doc.add_heading('AB测试分析报告', level=1)
+                title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                doc.add_paragraph(f'报告生成时间:{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}')
+                doc.add_paragraph(f'数据文件:{uploaded_file.name if uploaded_file else '未命名'}')
+                doc.add_paragraph(f"")
+
+                doc.add_heading('一、实验概述', level=2)
+                doc.add_paragraph(f'• 分组列：{group_col}{group_a_name} vs {group_b_name}')
+                doc.add_paragraph(f'• 数值指标列：{conv_col}')
+                doc.add_paragraph(f'• 总样本量：{len(val_a) + len(val_b)} (A组{len(val_a)}, B组{len(val_b)})')
+                doc.add_paragraph("")
+
+                doc.add_heading('二、T检验结果（数值指标对比）', level=2)
+                doc.add_paragraph(f"• {group_a_name} 平均值：{mean_a:.2f}")
+                doc.add_paragraph(f"• {group_b_name} 平均值：{mean_b:.2f}")
+                doc.add_paragraph(f"• 均值差：{mean_b - mean_a:.2f}")
+                doc.add_paragraph(f"• T统计量：{t_stat:.4f}")
+                doc.add_paragraph(f"• P值：{p_value:.4f}")
+                doc.add_paragraph(f"• 效应量 (Cohen's d)：{cohens_d:.4f}")
+                if p_value < 0.05:
+                    doc.add_paragraph("✅ 结论：两组差异显著")
+                else:
+                    doc.add_paragraph("ℹ️ 结论：两组差异不显著")
+                doc.add_paragraph("")
+                doc.add_heading('三、转化率对比（卡方检验）', level=2)
+                doc.add_paragraph(f"• {group_a_name} 转化率：{rate_a:.2f}%")
+                doc.add_paragraph(f"• {group_b_name} 转化率：{rate_b:.2f}%")
+                doc.add_paragraph(f"• 相对提升幅度：{lift:.1f}%（{rate_treatment - rate_control:.1f} 个百分点）")
+                doc.add_paragraph(f"• 卡方检验 P值：{p_value_conv:.4f}")
+                if p_value_conv < 0.05:
+                    doc.add_paragraph("✅ 结论：转化率差异显著")
+                else:
+                    doc.add_paragraph("ℹ️ 结论：转化率差异不显著")
+                doc.add_paragraph("")
+
+                doc.add_heading('四、分布对比图', level=2)
+                img_bytes = fig_to_bytes(fig)
+                doc.add_picture(img_bytes, width=Inches(6))
+                doc.add_paragraph("")
+
+                doc.add_heading('五、实验设计诊断摘要', level=2)
+                if 'power_mean' in locals() and 'power_prop' in locals():
+                    doc.add_paragraph(f"• 均值 T 检验功效：{power_mean:.3f}")
+                    doc.add_paragraph(f"• 比例差异检验功效：{power_prop:.3f}")
+                else:
+                    doc.add_paragraph("• 诊断信息：未检测到完整功效数据，请确保已完成分析。")
+                doc.add_paragraph("（功效 ≥ 0.8 表示实验设计较为可靠，低于 0.8 提示样本量可能不足。）")
+                doc.add_paragraph("")
+
+                doc.add_heading('六、综合结论', level=2)
+                if p_value < 0.05:
+                    doc.add_paragraph(f'✅ 在数值指标「{value_col}」上,{group_b_name}显著优于{group_a_name}(P={p_value:.4f},效应量 Cohens d = {cohens_d:.2f})')
+                else:
+                    doc.add_paragraph(f"ℹ️ 在数值指标「{value_col}」上, {group_b_name}")
+                doc.add_paragraph("")
+
+                doc.add_heading('附录：分组汇总表', level=2)
+                summary_rows = summary.to_pandas().values.tolist()
+                table = doc.add_table(rows=1+len(summary_rows), cols=len(summary.columns))
+                table.style = 'Table Grid'
+                for j, col_name in enumerate(summary.columns):
+                    table.cell(0,j).text = str(col_name)
+                for i, row in enumerate(summary_rows):
+                    for j, val in enumerate(row):
+                        table.cell(i+1, j).text = str(val)
+
+                doc_bytes = BytesIO()
+                doc.save(doc_bytes)
+                doc_bytes.seek(0)
+
+                st.download_button(
+                    label="📥 点击下载 Word 报告 (.docx)",
+                    data=doc_bytes,
+                    file_name=f'AB测试报告_{datetime.now().strftime("%Y/%m/%d %H:%M:%S")}.docx',
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+                st.success("✅ 报告生成完成！点击上方按钮下载。")
     else:
         #判断是否选择列分析的if
         st.info('请选择列')
