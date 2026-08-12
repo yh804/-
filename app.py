@@ -7,7 +7,6 @@ import io
 from scipy.stats import chi2_contingency, ttest_ind
 from statsmodels.stats.power import TTestIndPower, NormalIndPower
 from statsmodels.stats.proportion import proportion_effectsize
-import platform
 from datetime import datetime
 from docx import Document
 from docx.shared import Inches, Pt
@@ -170,6 +169,58 @@ if uploaded_file is not None:
             st.metric("相对提升幅度", lift_text, delta=delta_text)
             st.caption(f"{group_a_name} 转化率: {rate_a:.1f}% → {group_b_name} 转化率: {rate_b:.1f}%")
 
+        #----------------------------
+        with st.expander('SRM 检验(样本比率匹配检验)'):
+            st.markdown("""
+            ***SRM 检验***: 验证实际样本分配是否复合预期分流比例。
+            如果P值 < 0.05, 说明实验可能存在分流异常， 后续所有结论需谨慎对待
+            """)
+            n_a = len(val_a)
+            n_b = len(val_b)
+            total_n = n_a + n_b
+            col_srm1, col_srm2 = st.columns(2)
+            with col_srm1:
+                expected_ratio_a = st.slider(
+                    "A组期望分流比例(%)",
+                    min_value=10, max_value=90, value=50, step=5
+                ) / 100.0
+
+                expected_ratio_b = 1 - expected_ratio_a
+                st.caption(f'B 组比例自动为{expected_ratio_b*100:.0f}%')
+
+            expected_a = total_n * expected_ratio_a
+            expected_b = total_n * expected_ratio_b
+            with col_srm2:
+                st.metric('实际样本量', f"A组:{n_a}人, B组:{n_b}人")
+                st.metric("期望样本量",
+                          f"A组{int(expected_a)}人，"
+                          f"B组{int(expected_b)}人，")
+
+            observed = [n_a, n_b]
+            expected = [expected_a, expected_b]
+
+            chi2_srm, p_value_srm = chi2_contingency([observed, expected])[:2]
+
+            st.divider()
+            col_res1, col_res2 = st.columns(2)
+            with col_res1:
+                st.metric('SRM 卡方值', f"{chi2_srm:.4f}")
+                st.metric('SRM P值', f"{p_value_srm:.4f}")
+            with col_res2:
+                if p_value_srm >= 0.05:
+                    st.success('✅ SRM 检验通过(p>=0.05)')
+                    st.info('样本分流复合预期, 数据质量可靠, 可继续分析')
+                else:
+                    st.error("❌ SRM 检验未通过(p<0.05)")
+                    st.warning("""
+                    ⚠️ 实际样本分配偏离显著预期，可能存在以下问题:
+                    - 分流系统配置错误(如A/B组流量比例设置不一致)
+                    - 数据手机过程中的系统偏差(如某组用户被大量过滤)
+                    - 实验设计阶段的样本预估偏差
+                    """)
+
+        #----------------------------
+
         # ------- 3.6 分布直方图 -------
         if st.button("刷新页面"):
             st.rerun()
@@ -229,6 +280,8 @@ if uploaded_file is not None:
                             "P值": f"{p_val_sub:.4f}",
                             "结论": sig
                         })
+
+                    st.session_state['drill_results'] = results_data
 
                     if results_data:
                         import pandas as pd
@@ -372,7 +425,9 @@ if uploaded_file is not None:
                 doc.add_paragraph(f'• {group_b_name} 平均值：{mean_b:.2f}')
                 doc.add_paragraph(f'• 均值差（B - A）：{mean_b - mean_a:.2f}')
                 doc.add_paragraph(f'• T统计量：{t_stat:.4f}')
+                doc.add_paragraph(f'翻译: t 越大，对应的 p 值通常越小，越容易显著')
                 doc.add_paragraph(f'• P值：{p_value:.4f}')
+                doc.add_paragraph(f'翻译: 两组数值具有{"显著" if p_value < 0.05 else "不显著"}差异')
                 doc.add_paragraph(f'• 效应量 (Cohen\'s d)：{cohens_d:.4f}')
                 doc.add_paragraph("✅ 结论：两组差异显著" if p_value < 0.05 else "ℹ️ 结论：两组差异不显著")
                 doc.add_paragraph("")
@@ -382,6 +437,7 @@ if uploaded_file is not None:
                 doc.add_paragraph(f'• {group_b_name} 转化率：{rate_b:.2f}%')
                 doc.add_paragraph(f'• 相对提升幅度：{lift:.1f}%' if lift is not None else '• 相对提升幅度：N/A')
                 doc.add_paragraph(f'• 卡方检验 P值：{p_value_conv:.4f}' if p_value_conv is not None else '• 卡方检验 P值：未计算')
+                doc.add_paragraph(f"翻译:{'显著相关' if p_value_conv < 0.05 else '互相独立'}")
                 doc.add_paragraph("")
 
                 doc.add_heading('四、分布对比图', level=2)
@@ -404,6 +460,25 @@ if uploaded_file is not None:
                 for i, row in enumerate(summary_rows):
                     for j, val in enumerate(row):
                         table.cell(i + 1, j).text = str(val)
+
+                # ---- 新增：七、下钻分析结果 ----
+                if st.session_state.get('drill_results') and len(st.session_state['drill_results']) > 0:
+                    doc.add_heading('七、下钻分析结果', level=2)
+                    doc.add_paragraph(f'下钻维度:{st.session_state["drill_results"]}')
+                    drill_data = st.session_state['drill_results']
+                    #构建表格
+                    headers = list(drill_data[0].keys())
+                    table = doc.add_table(rows=1+len(drill_data), cols=len(headers))
+                    table.style = 'Table Grid'
+                    for j, h in enumerate(headers):
+                        table.cell(0, j).text = str(h)
+                    for i, row in enumerate(drill_data):
+                        for j, key in enumerate(headers):
+                            table.cell(i+1, j).text = str(row.get(key, ''))
+                    doc.add_paragraph("注：'✅ 显著'表示P<0.05；'❌ 不显著'表示P≥0.05；'⚠️ 不可信'表示样本量过少。")
+                else:
+                    doc.add_heading('七、下钻分析结果', level=2)
+                    doc.add_paragraph('未进行下钻分析或无可用的下钻数据')
 
                 doc_bytes = BytesIO()
                 doc.save(doc_bytes)
