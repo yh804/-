@@ -9,13 +9,14 @@
 - **实验设计诊断**：统计功效评估 + 最小样本量预估
 - **数据质量校验**：SRM检验（检查分流是否均匀）
 - **一键报告导出**：生成包含图表、结论和下钻结果的Word文档
+![Uploading 屏幕截图 2026-08-12 175110.png…]()
 
 ## 🛠️ 技术栈
 - **前端/交互**：Streamlit
 - **数据处理**：Polars
 - **统计分析**：SciPy, Statsmodels
 - **可视化**：Matplotlib
-
+![Uploading 屏幕截图 2026-08-12 175023.png…]()
 ## 🔗 在线体验
 点击这里直接使用：https://yg4jjjzaw9xyqjpvsrappmc.streamlit.app
 
